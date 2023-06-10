@@ -121,7 +121,12 @@ class Parser:
         pass
 
     def formal_params(self) -> Node:
-        declaration = self.de
+        params = []
+        while self.token.name != Token.RBR:
+            params.append(self.declaration())
+            if self.token.name == Token.COMMA:
+                self.next_token()
+        return NodeBlock(params)
 
     def operand(self) -> Node:
         first_token = self.token
@@ -167,7 +172,6 @@ class Parser:
             else:
                 self.error("Ожидалась закрывающая скобка ')'!")
 
-
     def factor(self) -> Node:
         if self.token.name == Token.MINUS:
             self.next_token()
@@ -204,6 +208,19 @@ class Parser:
                     left = NodeMinus(left, self.term())
             op = self.token.name
         return left
+
+    def declaration(self) -> Node:
+        if self.token.name == Token.ID:
+            _type = self.token
+            self.next_token()
+            if self.token.name == Token.ID:
+                id = self.token
+                self.next_token()
+                return NodeDeclaration(_type, id)
+            else:
+                self.error("Ожидался идентификатор!")
+        else:
+            self.error("Ожидался идентификатор типа!")
 
     def statement(self) -> Node:
         match self.token.name:
@@ -247,12 +264,8 @@ class Parser:
                         if self.token.name == Token.LBR:
                             # пропускаем скобку
                             self.next_token()
-                            # случай функции без параметров
-                            if self.token.name == Token.RBR:
-                                formal_params = NodeFormalParams([])
-                            else:
-                                # начинаем разбор формальных параметров
-                                formal_params = self.formal_params()
+                            # начинаем разбор формальных параметров
+                            formal_params = self.formal_params()
                             # после разбора формальных параметров лексер должен смотреть на закрывающую скобку )
                             if self.token.name == Token.RBR:
                                 # пропускаем скобку
