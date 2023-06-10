@@ -84,6 +84,26 @@ class NodeFormalParams(Node):
             res += param.__repr__(level+1)
         return res
 
+class NodeIfConstruction(Node):
+    def __init__(self, condition, block, else_block):
+        self.condition = condition
+        self.block = block
+        self.else_block = else_block
+    
+    def __repr__(self, level=0):
+        res = "IF-CONSTRUCTION\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"condition: {self.condition.__repr__(level+1)}"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"block: {self.block.__repr__(level+1)}"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"else_block: {self.else_block.__repr__(level+1)}"
+        return res
+        
+
 class NodeLiteral(Node):
     def __init__(self, value):
         self.value = value
@@ -94,6 +114,43 @@ class NodeLiteral(Node):
 class NodeStringLiteral(NodeLiteral): pass
 class NodeIntLiteral(NodeLiteral): pass
 class NodeFloatLiteral(NodeLiteral): pass
+
+class NodeVar(Node):
+    def __init__(self, id):
+        self.id = id
+    
+    def __repr__(self, level=0):
+        return f"{self.id}\n"
+
+class NodeBinaryOperator(Node):
+    def __init__(self, left, right):
+        self.left = left
+        self.right = right
+
+    def __repr__(self, level=0):
+        res = "SOME BINARY OP\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"left : {self.left.__repr__(level+1)}"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"right: {self.right.__repr__(level+1)}"
+        return res
+
+class NodeL(NodeBinaryOperator): pass
+class NodeG(NodeBinaryOperator): pass
+class NodeLE(NodeBinaryOperator): pass
+class NodeGE(NodeBinaryOperator): pass
+class NodeEQ(NodeBinaryOperator): pass
+class NodeNEQ(NodeBinaryOperator): pass
+
+class NodePlus(NodeBinaryOperator): pass
+class NodeMinus(NodeBinaryOperator): pass
+class NodeDivision(NodeBinaryOperator): pass
+class NodeMultiply(NodeBinaryOperator): pass
+class NodeIDivision(NodeBinaryOperator): pass
+class NodeMod(NodeBinaryOperator): pass
+
 
 class Parser:
     def __init__(self, lexer: Lexer):
@@ -126,7 +183,7 @@ class Parser:
             params.append(self.declaration())
             if self.token.name == Token.COMMA:
                 self.next_token()
-        return NodeBlock(params)
+        return NodeFormalParams(params)
 
     def operand(self) -> Node:
         first_token = self.token
@@ -206,6 +263,49 @@ class Parser:
                     left = NodePlus(left, self.term())
                 case Token.MINUS:
                     left = NodeMinus(left, self.term())
+            op = self.token.name
+        return left
+
+    def and_operand(self) -> Node:
+        if self.token.name == Token.NOT:
+            self.next_token
+            return NodeNot(self.and_operand())
+        else:
+            left = self.expression()
+            op = self.token.name
+            while op in {Token.L, Token.G, Token.LE, Token.GE, Token.EQ, Token.NEQ}:
+                self.next_token()
+                match op:
+                    case Token.L:
+                        left = NodeL(left, self.expression())
+                    case Token.G:
+                        left = NodeG(left, self.expression())
+                    case Token.LE:
+                        left = NodeLE(left, self.expression())
+                    case Token.GE:
+                        left = NodeGE(left, self.expression())
+                    case Token.EQ:
+                        left = NodeEQ(left, self.expression())
+                    case Token.NEQ:
+                        left = NodeNEQ(left, self.expression())
+                op = self.token.name
+            return left
+
+    def or_operand(self) -> Node:
+        left = self.and_operand()
+        op = self.token.name
+        while op == Token.AND:
+            self.next_token()
+            left = NodeAnd(left, self.and_operand())
+            op = self.token.name
+        return left
+
+    def condition(self) -> Node:
+        left = self.or_operand()
+        op = self.token.name
+        while op == Token.OR:
+            self.next_token()
+            left = NodeOr(left, self.or_operand())
             op = self.token.name
         return left
 
@@ -313,7 +413,7 @@ class Parser:
                                 self.error("Ожидалась открывающая скобка '{' для блока else!")
                         else:
                             # возврат условной конструкции без блока else
-                            return NodeIfConstruction(condition, block, [])
+                            return NodeIfConstruction(condition, block, NodeBlock([]))
                     else:
                         self.error("Ожидалась закрывающая скобка '}' для блока if!")
                 else:

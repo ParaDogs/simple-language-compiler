@@ -13,16 +13,16 @@ int a;
 a = 1;
 int b;
 b = 2;
+int t;
+t = 0;
 
 if a > b {
-    print("Max = ")
-    print(str(a))
-} else {
-    print("Max = ")
-    print(str(b))
-}
+    a = 2;
+};
 
-
-
+function string bar() {
+    int i;
+    i = 0;
+};
 
 

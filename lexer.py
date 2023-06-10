@@ -2,11 +2,12 @@ import sys
 
 class Token:
     EOF, STRING_LITERAL, ID, INT_LITERAL,\
-    FLOAT_LITERAL, ASSIGN, L, G, EQUALS,\
+    FLOAT_LITERAL, ASSIGN, L, G, EQ, NEQ,\
     PLUS, MINUS, ASTERISK, SLASH, DSLASH,\
     PERCENT, LBR, RBR, LCBR, RCBR, LSBR,\
     RSBR, LE, GE, SEMI, COMMA,\
-    FOR, WHILE, RETURN, FUNCTION, IF, ELSE = range(31)
+    FOR, WHILE, RETURN, FUNCTION, IF, ELSE,\
+    OR, AND, NOT = range(35)
 
     KEYWORDS = {
         'for'       : FOR,
@@ -15,6 +16,9 @@ class Token:
         'function'  : FUNCTION,
         'if'        : IF,
         'else'      : ELSE,
+        'or'        : OR,
+        'and'       : AND,
+        'not'       : NOT,
     }
 
     def __init__(self, token, value, lineno, pos):
@@ -33,7 +37,7 @@ class Token:
             Token.ASSIGN          : "ASSIGN",
             Token.L               : "L",
             Token.G               : "G",
-            Token.EQUALS          : "EQUALS",
+            Token.EQ              : "EQ",
             Token.PLUS            : "PLUS",
             Token.MINUS           : "MINUS",
             Token.ASTERISK        : "ASTERISK",
@@ -124,6 +128,13 @@ class Lexer:
                 elif self.char == ',':
                     self.__get_next_char()
                     return Token(Token.COMMA, ",", self.lineno, self.pos)
+                elif self.char == '!':
+                    self.__get_next_char()
+                    if self.char == '=':
+                        self.__get_next_char()
+                        return Token(Token.NEQ, "!=", self.lineno, self.pos)
+                    else:
+                        self.error("Ожидался оператор !=")
                 elif self.char == '/':
                     self.state = Token.SLASH
                     return self.get_next_token()
@@ -159,7 +170,7 @@ class Lexer:
                 self.__get_next_char()
                 if self.char == '=':
                     self.state = None
-                    return Token(Token.EQUALS, "==", self.lineno, self.pos)
+                    return Token(Token.EQ, "==", self.lineno, self.pos)
                 else:
                     self.state = None
                     return Token(Token.ASSIGN, "=", self.lineno, self.pos)

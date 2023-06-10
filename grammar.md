@@ -59,7 +59,7 @@ condition       ::= or-operand OR condition
 or-operand      ::= and-operand AND or-operand
                 | and-operand
 
-and-operand     ::= NOT and-operator
+and-operand     ::= NOT and-operand
                 | expression compare-operator and-operand
                 | expression
 
