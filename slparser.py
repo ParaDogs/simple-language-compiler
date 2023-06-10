@@ -143,6 +143,8 @@ class NodeLE(NodeBinaryOperator): pass
 class NodeGE(NodeBinaryOperator): pass
 class NodeEQ(NodeBinaryOperator): pass
 class NodeNEQ(NodeBinaryOperator): pass
+class NodeOr(NodeBinaryOperator): pass
+class NodeAnd(NodeBinaryOperator): pass
 
 class NodePlus(NodeBinaryOperator): pass
 class NodeMinus(NodeBinaryOperator): pass
