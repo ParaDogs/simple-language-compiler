@@ -1,15 +1,21 @@
 import sys
 from lexer import Lexer, Token
 
-class Node: pass
+class Node:
+    def __repr__(self, level=0):
+        pass
 
 class NodeProgram(Node):
     def __init__(self, children):
         self.children = children
 
-    def __repr__(self):
-        s = '\n'.join([str(x) for x in self.children])
-        return s
+    def __repr__(self, level=0):
+        res = "PROGRAM\n"
+        for child in self.children:
+            res += '|   ' * level
+            res += "|+-"
+            res += child.__repr__(level+1)
+        return res
 
 class NodeBlock(NodeProgram): pass
 
@@ -18,16 +24,30 @@ class NodeDeclaration(Node):
         self.type = _type
         self.id = id
 
-    def __repr__(self):
-        return f"DECLARATION <{self.type}, {self.id}>"
+    def __repr__(self, level=0):
+        res = "DECLARATION\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"type: {self.type}\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"id: {self.id}\n"
+        return res
 
 class NodeAssigning(Node):
     def __init__(self, id, expression):
         self.id = id
         self.expression = expression
 
-    def __repr__(self):
-        return f"ASSIGNING <{self.id}, {self.expression}>"
+    def __repr__(self, level=0):
+        res = "ASSIGNING\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"id: {self.id}\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"expression: {self.expression.__repr__(level+1)}"
+        return res
 
 class NodeFunction(Node):
     def __init__(self, ret_type, id, formal_params, block):
@@ -36,15 +56,40 @@ class NodeFunction(Node):
         self.formal_params = formal_params
         self.block = block
 
-    def __repr__(self):
-        return f"FUNCTION <{self.ret_type}, {self.id}, {self.formal_params}, <{self.block}>>"
+    def __repr__(self, level=0):
+        res = "FUNCTION\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"ret_type: {self.ret_type}\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"id: {self.id}\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"foramal_params: {self.formal_params.__repr__(level+1)}"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"block: {self.block.__repr__(level+1)}"
+        return res
+
+class NodeFormalParams(Node):
+    def __init__(self, params):
+        self.params = params
+    
+    def __repr__(self, level=0):
+        res = "FORMAL_PARAMS\n"
+        for param in self.params:
+            res += '|   ' * level
+            res += "|+-"
+            res += param.__repr__(level+1)
+        return res
 
 class NodeLiteral(Node):
     def __init__(self, value):
         self.value = value
     
-    def __repr__(self):
-        return f"{self.value}"
+    def __repr__(self, level=0):
+        return f"{self.value}\n"
 
 class NodeStringLiteral(NodeLiteral): pass
 class NodeIntLiteral(NodeLiteral): pass
@@ -204,7 +249,7 @@ class Parser:
                             self.next_token()
                             # случай функции без параметров
                             if self.token.name == Token.RBR:
-                                formal_params = []
+                                formal_params = NodeFormalParams([])
                             else:
                                 # начинаем разбор формальных параметров
                                 formal_params = self.formal_params()

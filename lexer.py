@@ -197,10 +197,10 @@ class Lexer:
                     self.__get_next_char()
                 if self.char == '.':
                     self.state = Token.FLOAT_LITERAL
-                    float_literal = int_literal + self.char
+                    float_literal = int_literal + '.'
                     self.__get_next_char()
                     while self.char.isdigit():
-                        int_literal += self.char
+                        float_literal += self.char
                         self.__get_next_char()
                 if self.char.isalpha() or self.char == '_':
                     self.error("Неверная запись идентификатора!")
