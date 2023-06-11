@@ -59,9 +59,13 @@ condition       ::= or-operand OR condition
 or-operand      ::= and-operand AND or-operand
                 | and-operand
 
-and-operand     ::= NOT and-operand
-                | expression compare-operator and-operand
-                | expression
+and-operand     ::= logical-operand compare-operator and-operand
+                | logical-operand
+
+logical-operand ::= expression
+                | NOT logical-operand
+                | LBR condition RBR
+
 
 compare-operator ::= L | G | LE | GE | EQ | NEQ
 

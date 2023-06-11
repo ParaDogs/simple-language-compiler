@@ -162,6 +162,7 @@ class Lexer:
                 self.__get_next_char()
                 if self.char == '/':
                     self.state = None
+                    self.__get_next_char()
                     return Token(Token.DSLASH, "//", self.lineno, self.pos)
                 else:
                     self.state = None
@@ -170,6 +171,7 @@ class Lexer:
                 self.__get_next_char()
                 if self.char == '=':
                     self.state = None
+                    self.__get_next_char()
                     return Token(Token.EQ, "==", self.lineno, self.pos)
                 else:
                     self.state = None
@@ -178,6 +180,7 @@ class Lexer:
                 self.__get_next_char()
                 if self.char == '=':
                     self.state = None
+                    self.__get_next_char()
                     return Token(Token.LE, "<=", self.lineno, self.pos)
                 else:
                     self.state = None
@@ -186,6 +189,7 @@ class Lexer:
                 self.__get_next_char()
                 if self.char == '=':
                     self.state = None
+                    self.__get_next_char()
                     return Token(Token.GE, ">=", self.lineno, self.pos)
                 else:
                     self.state = None

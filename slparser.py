@@ -41,15 +41,15 @@ class NodeDeclaration(Node):
         return res
 
 class NodeAssigning(Node):
-    def __init__(self, id, expression):
-        self.id = id
+    def __init__(self, var, expression):
+        self.var = var
         self.expression = expression
 
     def __repr__(self, level=0):
         res = "ASSIGNING\n"
         res += '|   ' * level
         res += "|+-"
-        res += f"id: {self.id}\n"
+        res += f"var: {self.var.__repr__(level+1)}"
         res += '|   ' * level
         res += "|+-"
         res += f"expression: {self.expression.__repr__(level+1)}"
@@ -126,14 +126,18 @@ class NodeVar(Node):
         self.id = id
     
     def __repr__(self, level=0):
-        return f"{self.id}\n"
+        res = f"{self.get_class_name()}\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"id : {self.id}\n"
+        return res
 
 class NodeUnaryOperator(Node):
     def __init__(self, operand):
         self.operand = operand
     
     def __repr__(self, level=0):
-        res = f"{self.get_class_name()}\n" # имя класса
+        res = f"{self.get_class_name()}\n"
         res += '|   ' * level
         res += "|+-"
         res += f"operand : {self.operand.__repr__(level+1)}"
@@ -148,7 +152,7 @@ class NodeBinaryOperator(Node):
         self.right = right
 
     def __repr__(self, level=0):
-        res = f"{self.get_class_name()}\n" # имя класса
+        res = f"{self.get_class_name()}\n"
         res += '|   ' * level
         res += "|+-"
         res += f"left : {self.left.__repr__(level+1)}"
@@ -288,30 +292,41 @@ class Parser:
             op = self.token.name
         return left
 
-    def and_operand(self) -> Node:
+    def logical_operand(self) -> Node:
         if self.token.name == Token.NOT:
-            self.next_token
-            return NodeNot(self.and_operand())
-        else:
-            left = self.expression()
-            op = self.token.name
-            while op in {Token.L, Token.G, Token.LE, Token.GE, Token.EQ, Token.NEQ}:
+            self.next_token()
+            return NodeNot(self.logical_operand())
+        elif self.token.name == Token.LBR:
+            self.next_token()
+            condition = self.condition()
+            if self.token.name == Token.RBR:
                 self.next_token()
-                match op:
-                    case Token.L:
-                        left = NodeL(left, self.expression())
-                    case Token.G:
-                        left = NodeG(left, self.expression())
-                    case Token.LE:
-                        left = NodeLE(left, self.expression())
-                    case Token.GE:
-                        left = NodeGE(left, self.expression())
-                    case Token.EQ:
-                        left = NodeEQ(left, self.expression())
-                    case Token.NEQ:
-                        left = NodeNEQ(left, self.expression())
-                op = self.token.name
-            return left
+                return condition
+            else:
+                self.error("Ожидалась закрывающая скобка ')'!")
+        else:
+            return self.expression()
+
+    def and_operand(self) -> Node:
+        left = self.logical_operand()
+        op = self.token.name
+        while op in {Token.L, Token.G, Token.LE, Token.GE, Token.EQ, Token.NEQ}:
+            self.next_token()
+            match op:
+                case Token.L:
+                    left = NodeL(left, self.expression())
+                case Token.G:
+                    left = NodeG(left, self.expression())
+                case Token.LE:
+                    left = NodeLE(left, self.expression())
+                case Token.GE:
+                    left = NodeGE(left, self.expression())
+                case Token.EQ:
+                    left = NodeEQ(left, self.expression())
+                case Token.NEQ:
+                    left = NodeNEQ(left, self.expression())
+            op = self.token.name
+        return left
 
     def or_operand(self) -> Node:
         left = self.and_operand()
@@ -356,7 +371,7 @@ class Parser:
                     return NodeDeclaration(first_token, second_token)
                 elif self.token.name == Token.ASSIGN:
                     self.next_token()
-                    return NodeAssigning(first_token, self.expression())
+                    return NodeAssigning(NodeVar(first_token), self.expression())
                 elif self.token.name == Token.LBR:
                     self.next_token()
                     if self.token.name == Token.RBR:
