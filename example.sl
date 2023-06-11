@@ -54,6 +54,7 @@ function int f(int a, int[6] b) {
 
 function int bar() {
     f();
+    a = 123;
 };
 
 int[10] p;

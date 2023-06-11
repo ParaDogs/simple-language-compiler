@@ -66,7 +66,7 @@ class NodeFunction(Node):
         res = "FUNCTION\n"
         res += '|   ' * level
         res += "|+-"
-        res += f"ret_type: {self.ret_type}\n"
+        res += f"ret_type: {self.ret_type.__repr__(level+1)}"
         res += '|   ' * level
         res += "|+-"
         res += f"id: {self.id}\n"
@@ -469,13 +469,13 @@ class Parser:
         match self.token.name:
             # declaration | assigning | function-call
             case Token.ID:
-                first_token = self.token
+                _type = self.token
                 self.next_token()
                 # например int abc 
                 if self.token.name == Token.ID:
-                    second_token = self.token
+                    name = self.token
                     self.next_token()
-                    return NodeDeclaration(NodeAtomType(first_token), second_token)
+                    return NodeDeclaration(NodeAtomType(_type), name)
                 # например int[10] abc
                 elif self.token.name == Token.LSBR:
                     self.next_token()
@@ -485,9 +485,9 @@ class Parser:
                         if self.token.name == Token.RSBR:
                             self.next_token()
                             if self.token.name == Token.ID:
-                                second_token = self.token
+                                name = self.token
                                 self.next_token()
-                                return NodeDeclaration(NodeComplexType(first_token, size), second_token)
+                                return NodeDeclaration(NodeComplexType(_type, size), name)
                             else:
                                 self.error("Ожидался идентификатор переменной!")
                         else:
@@ -497,14 +497,14 @@ class Parser:
                 # например abc = 123
                 elif self.token.name == Token.ASSIGN:
                     self.next_token()
-                    return NodeAssigning(NodeVar(first_token), self.expression())
+                    return NodeAssigning(NodeVar(_type), self.expression())
                 # например abc(1,3,4)
                 elif self.token.name == Token.LBR:
                     self.next_token()
                     actual_params = self.actual_params()
                     if self.token.name == Token.RBR:
                         self.next_token()
-                        return NodeFunctionCall(first_token, actual_params)
+                        return NodeFunctionCall(_type, actual_params)
                 else:
                     self.error("Ожидалось объявление переменной, присваивание или вызов функции!")
 
@@ -514,14 +514,12 @@ class Parser:
                 self.next_token()
                 # следующий токен содержит тип возвр. значения. это ID типа.
                 if self.token.name == Token.ID:
-                    # сохраним тип в первый токен
-                    first_token = self.token
-                    # возмем следующий токен
-                    self.next_token()
+                    # сохраним тип
+                    _type = self.type()
                     # следующий токен содержит ID функции
                     if self.token.name == Token.ID:
-                        # сохраним имя функции во второй токен
-                        second_token = self.token
+                        # сохраним имя функции
+                        name = self.token
                         # смотрим на следующий токен
                         self.next_token()
                         # следующий токен ( - скобка перед формальными параметрами
@@ -543,7 +541,7 @@ class Parser:
                                     # после разбора тела функции мы должны встретить закрывающую скобку }
                                     if self.token.name == Token.RCBR:
                                         self.next_token()
-                                        return NodeFunction(first_token, second_token, formal_params, block)
+                                        return NodeFunction(_type, name, formal_params, block)
                                     else:
                                         self.error("Ожидалась закрывающая фигурная скобка!")
                                 else:
