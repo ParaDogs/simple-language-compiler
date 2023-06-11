@@ -128,7 +128,10 @@ class NodeBinaryOperator(Node):
         self.right = right
 
     def __repr__(self, level=0):
-        res = "SOME BINARY OP\n"
+        c = str(self.__class__)
+        pos_1 = c.find('.')+1
+        pos_2 = c.find("'", pos_1)
+        res = f"{c[pos_1:pos_2]}\n" # имя класса
         res += '|   ' * level
         res += "|+-"
         res += f"left : {self.left.__repr__(level+1)}"
