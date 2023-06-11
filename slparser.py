@@ -34,7 +34,7 @@ class NodeDeclaration(Node):
         res = "DECLARATION\n"
         res += '|   ' * level
         res += "|+-"
-        res += f"type: {self.type}\n"
+        res += f"type: {self.type.__repr__(level+1)}"
         res += '|   ' * level
         res += "|+-"
         res += f"id: {self.id}\n"
@@ -158,6 +158,32 @@ class NodeVar(Node):
         res += '|   ' * level
         res += "|+-"
         res += f"id: {self.id}\n"
+        return res
+
+class NodeAtomType(Node):
+    def __init__(self, id):
+        self.id = id
+
+    def __repr__(self, level=0):
+        res = f"ATOM-TYPE\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"id: {self.id}\n"
+        return res
+
+class NodeComplexType(Node):
+    def __init__(self, id, size):
+        self.id = id
+        self.size = size
+
+    def __repr__(self, level=0):
+        res = f"COMPLEX-TYPE\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"id: {self.id}\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"size: {self.size}\n"
         return res
 
 class NodeFunctionCall(Node):
@@ -409,10 +435,27 @@ class Parser:
             op = self.token.name
         return left
 
+    def type(self) -> Node:
+        id = self.token
+        self.next_token()
+        if self.token.name == Token.LSBR:
+            self.next_token()
+            if self.token.name == Token.INT_LITERAL:
+                size = self.token
+                self.next_token()
+                if self.token.name == Token.RSBR:
+                    self.next_token()
+                    return NodeComplexType(id, size)
+                else:
+                    self.error("Ожидалась ']' при указании размера массива!")
+            else:
+                self.error("Ожидался целочисленый литерал при указании размера массива!")
+        else:
+            return NodeAtomType(id)
+
     def declaration(self) -> Node:
         if self.token.name == Token.ID:
-            _type = self.token
-            self.next_token()
+            _type = self.type()
             if self.token.name == Token.ID:
                 id = self.token
                 self.next_token()
@@ -428,23 +471,44 @@ class Parser:
             case Token.ID:
                 first_token = self.token
                 self.next_token()
+                # например int abc 
                 if self.token.name == Token.ID:
                     second_token = self.token
                     self.next_token()
-                    return NodeDeclaration(first_token, second_token)
+                    return NodeDeclaration(NodeAtomType(first_token), second_token)
+                # например int[10] abc
+                elif self.token.name == Token.LSBR:
+                    self.next_token()
+                    if self.token.name == Token.INT_LITERAL:
+                        size = self.token
+                        self.next_token()
+                        if self.token.name == Token.RSBR:
+                            self.next_token()
+                            if self.token.name == Token.ID:
+                                second_token = self.token
+                                self.next_token()
+                                return NodeDeclaration(NodeComplexType(first_token, size), second_token)
+                            else:
+                                self.error("Ожидался идентификатор переменной!")
+                        else:
+                            self.error("Ожидалась ']' при указании размера массива!")
+                    else:
+                        self.error("Ожидался целочисленый литерал при указании размера массива!")
+                # например abc = 123
                 elif self.token.name == Token.ASSIGN:
                     self.next_token()
                     return NodeAssigning(NodeVar(first_token), self.expression())
+                # например abc(1,3,4)
                 elif self.token.name == Token.LBR:
                     self.next_token()
+                    actual_params = self.actual_params()
                     if self.token.name == Token.RBR:
-                        return NodeFunctionCall(first_token, [])
-                    else:
-                        return NodeFunctionCall(first_token, self.actual_params())
+                        self.next_token()
+                        return NodeFunctionCall(first_token, actual_params)
                 else:
                     self.error("Ожидалось объявление переменной, присваивание или вызов функции!")
 
-            # function ...
+            # function
             case Token.FUNCTION:
                 # пропускаем токен FUNCTION
                 self.next_token()
@@ -465,7 +529,7 @@ class Parser:
                             # пропускаем скобку
                             self.next_token()
                             # начинаем разбор формальных параметров
-                            formal_params = self.formal_params()
+                            formal_params = self.formal_params() 
                             # после разбора формальных параметров лексер должен смотреть на закрывающую скобку )
                             if self.token.name == Token.RBR:
                                 # пропускаем скобку

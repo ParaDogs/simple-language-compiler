@@ -48,4 +48,14 @@ while i < n {
     };
 };
 
+function int f(int a, int[6] b) {
+    f();
+};
+
+function int bar() {
+    f();
+};
+
+int[10] p;
+
 p = a[6];
