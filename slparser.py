@@ -157,7 +157,7 @@ class NodeVar(Node):
         res = f"{self.get_class_name()}\n"
         res += '|   ' * level
         res += "|+-"
-        res += f"id : {self.id}\n"
+        res += f"id: {self.id}\n"
         return res
 
 class NodeFunctionCall(Node):
@@ -169,10 +169,25 @@ class NodeFunctionCall(Node):
         res = f"FUNCTION-CALL\n"
         res += '|   ' * level
         res += "|+-"
-        res += f"id : {self.id}\n"
+        res += f"id: {self.id}\n"
         res += '|   ' * level
         res += "|+-"
-        res += f"id : {self.actual_params.__repr__(level+1)}\n"
+        res += f"id: {self.actual_params.__repr__(level+1)}"
+        return res
+        
+class NodeIndexAccess(Node):
+    def __init__(self, var, index):
+        self.var = var
+        self.index = index
+
+    def __repr__(self, level=0):
+        res = f"INDEX-ACCESS\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"var: {self.var.__repr__(level+1)}"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"index: {self.index.__repr__(level+1)}"
         return res
         
 class NodeUnaryOperator(Node):
@@ -289,7 +304,7 @@ class Parser:
                 index = self.expression()
                 if self.token.name == Token.RSBR:
                     self.next_token()
-                    return NodeIndexAccess(first_token, index)
+                    return NodeIndexAccess(NodeVar(first_token), index)
                 else:
                     self.error("Ожидалась закрывающая скобка ']'!")
             else:
