@@ -5,6 +5,12 @@ class Node:
     def __repr__(self, level=0):
         pass
 
+    def get_class_name(self):
+        c = str(self.__class__)
+        pos_1 = c.find('.')+1
+        pos_2 = c.find("'", pos_1)
+        return f"{c[pos_1:pos_2]}"
+
 class NodeProgram(Node):
     def __init__(self, children):
         self.children = children
@@ -122,16 +128,27 @@ class NodeVar(Node):
     def __repr__(self, level=0):
         return f"{self.id}\n"
 
+class NodeUnaryOperator(Node):
+    def __init__(self, operand):
+        self.operand = operand
+    
+    def __repr__(self, level=0):
+        res = f"{self.get_class_name()}\n" # имя класса
+        res += '|   ' * level
+        res += "|+-"
+        res += f"operand : {self.operand.__repr__(level+1)}"
+        return res
+
+class NodeUnaryMinus(NodeUnaryOperator): pass
+class NodeNot(NodeUnaryOperator): pass
+
 class NodeBinaryOperator(Node):
     def __init__(self, left, right):
         self.left = left
         self.right = right
 
     def __repr__(self, level=0):
-        c = str(self.__class__)
-        pos_1 = c.find('.')+1
-        pos_2 = c.find("'", pos_1)
-        res = f"{c[pos_1:pos_2]}\n" # имя класса
+        res = f"{self.get_class_name()}\n" # имя класса
         res += '|   ' * level
         res += "|+-"
         res += f"left : {self.left.__repr__(level+1)}"
