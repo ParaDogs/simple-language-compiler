@@ -144,6 +144,11 @@ declaration     ::= type ID
 Переменной присваивается значение некоторого выражения.
  -->
 assigning       ::= ID ASSIGN expression
+                | ID ASSIGN LSBR sequence RSBR
+                | ID ASSIGN LSBR RSBR
+
+sequence        ::= expression
+                | expression COMMA sequence
 
 ### FUNCTION-construction
 <!-- 

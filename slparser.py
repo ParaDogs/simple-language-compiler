@@ -49,10 +49,10 @@ class NodeAssigning(Node):
         res = "ASSIGNING\n"
         res += '|   ' * level
         res += "|+-"
-        res += f"var: {self.var.__repr__(level+1)}"
+        res += f"left-side : {self.var.__repr__(level+1)}"
         res += '|   ' * level
         res += "|+-"
-        res += f"expression: {self.expression.__repr__(level+1)}"
+        res += f"right-side: {self.expression.__repr__(level+1)}"
         return res
 
 class NodeFunction(Node):
@@ -76,6 +76,18 @@ class NodeFunction(Node):
         res += '|   ' * level
         res += "|+-"
         res += f"block: {self.block.__repr__(level+1)}"
+        return res
+
+class NodeSequence(Node):
+    def __init__(self, members):
+        self.members = members
+    
+    def __repr__(self, level=0):
+        res = f"SEQUENCE\n"
+        for param in self.members:
+            res += '|   ' * level
+            res += "|+-"
+            res += param.__repr__(level+1)
         return res
 
 class NodeParams(Node):
@@ -198,7 +210,7 @@ class NodeFunctionCall(Node):
         res += f"id: {self.id}\n"
         res += '|   ' * level
         res += "|+-"
-        res += f"id: {self.actual_params.__repr__(level+1)}"
+        res += f"actual_params: {self.actual_params.__repr__(level+1)}"
         return res
         
 class NodeIndexAccess(Node):
@@ -453,6 +465,14 @@ class Parser:
         else:
             return NodeAtomType(id)
 
+    def sequence(self) -> Node:
+        members = []
+        while self.token.name != Token.RSBR:
+            members.append(self.expression())
+            if self.token.name == Token.COMMA:
+                self.next_token()
+        return NodeSequence(members)
+
     def declaration(self) -> Node:
         if self.token.name == Token.ID:
             _type = self.type()
@@ -469,13 +489,13 @@ class Parser:
         match self.token.name:
             # declaration | assigning | function-call
             case Token.ID:
-                _type = self.token
+                first_token = self.token
                 self.next_token()
                 # например int abc 
                 if self.token.name == Token.ID:
                     name = self.token
                     self.next_token()
-                    return NodeDeclaration(NodeAtomType(_type), name)
+                    return NodeDeclaration(NodeAtomType(first_token), name)
                 # например int[10] abc
                 elif self.token.name == Token.LSBR:
                     self.next_token()
@@ -487,24 +507,33 @@ class Parser:
                             if self.token.name == Token.ID:
                                 name = self.token
                                 self.next_token()
-                                return NodeDeclaration(NodeComplexType(_type, size), name)
+                                return NodeDeclaration(NodeComplexType(first_token, size), name)
                             else:
                                 self.error("Ожидался идентификатор переменной!")
                         else:
                             self.error("Ожидалась ']' при указании размера массива!")
                     else:
                         self.error("Ожидался целочисленый литерал при указании размера массива!")
-                # например abc = 123
+                # например abc = 123 или abc = [1,2,3]
                 elif self.token.name == Token.ASSIGN:
                     self.next_token()
-                    return NodeAssigning(NodeVar(_type), self.expression())
+                    if self.token.name == Token.LSBR:
+                        self.next_token()
+                        sequence = self.sequence()
+                        if self.token.name == Token.RSBR:
+                            self.next_token()
+                            return NodeAssigning(NodeVar(first_token), sequence)
+                        else:
+                            self.error("Ожидалась закрывающая скобка ']' при записи последовательности!")
+                    else:
+                        return NodeAssigning(NodeVar(first_token), self.expression())
                 # например abc(1,3,4)
                 elif self.token.name == Token.LBR:
                     self.next_token()
                     actual_params = self.actual_params()
                     if self.token.name == Token.RBR:
                         self.next_token()
-                        return NodeFunctionCall(_type, actual_params)
+                        return NodeFunctionCall(first_token, actual_params)
                 else:
                     self.error("Ожидалось объявление переменной, присваивание или вызов функции!")
 
@@ -515,7 +544,7 @@ class Parser:
                 # следующий токен содержит тип возвр. значения. это ID типа.
                 if self.token.name == Token.ID:
                     # сохраним тип
-                    _type = self.type()
+                    first_token = self.type()
                     # следующий токен содержит ID функции
                     if self.token.name == Token.ID:
                         # сохраним имя функции
@@ -541,7 +570,7 @@ class Parser:
                                     # после разбора тела функции мы должны встретить закрывающую скобку }
                                     if self.token.name == Token.RCBR:
                                         self.next_token()
-                                        return NodeFunction(_type, name, formal_params, block)
+                                        return NodeFunction(first_token, name, formal_params, block)
                                     else:
                                         self.error("Ожидалась закрывающая фигурная скобка!")
                                 else:
