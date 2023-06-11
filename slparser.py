@@ -78,17 +78,20 @@ class NodeFunction(Node):
         res += f"block: {self.block.__repr__(level+1)}"
         return res
 
-class NodeFormalParams(Node):
+class NodeParams(Node):
     def __init__(self, params):
         self.params = params
     
     def __repr__(self, level=0):
-        res = "FORMAL_PARAMS\n"
+        res = f"{self.get_class_name()}\n"
         for param in self.params:
             res += '|   ' * level
             res += "|+-"
             res += param.__repr__(level+1)
         return res
+
+class NodeFormalParams(NodeParams): pass
+class NodeActualParams(NodeParams): pass
 
 class NodeIfConstruction(Node):
     def __init__(self, condition, block, else_block):
@@ -109,6 +112,31 @@ class NodeIfConstruction(Node):
         res += f"else_block: {self.else_block.__repr__(level+1)}"
         return res
         
+class NodeWhileConstruction(Node):
+    def __init__(self, condition, block):
+        self.condition = condition
+        self.block = block
+
+    def __repr__(self, level=0):
+        res = "WHILE-CONSTRUCTION\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"condition: {self.condition.__repr__(level+1)}"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"block: {self.block.__repr__(level+1)}"
+        return res
+
+class NodeReturnStatement(Node):
+    def __init__(self, expression):
+        self.expression = expression
+    
+    def __repr__(self, level=0):
+        res = "RETURN-STATEMETS\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"expression: {self.expression.__repr__(level+1)}"
+        return res
 
 class NodeLiteral(Node):
     def __init__(self, value):
@@ -132,6 +160,21 @@ class NodeVar(Node):
         res += f"id : {self.id}\n"
         return res
 
+class NodeFunctionCall(Node):
+    def __init__(self, id, actual_params):
+        self.id = id
+        self.actual_params = actual_params
+
+    def __repr__(self, level=0):
+        res = f"FUNCTION-CALL\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"id : {self.id}\n"
+        res += '|   ' * level
+        res += "|+-"
+        res += f"id : {self.actual_params.__repr__(level+1)}\n"
+        return res
+        
 class NodeUnaryOperator(Node):
     def __init__(self, operand):
         self.operand = operand
@@ -201,7 +244,12 @@ class Parser:
         return NodeBlock(statements)
 
     def actual_params(self) -> Node:
-        pass
+        params = []
+        while self.token.name != Token.RBR:
+            params.append(self.expression())
+            if self.token.name == Token.COMMA:
+                self.next_token()
+        return NodeActualParams(params)
 
     def formal_params(self) -> Node:
         params = []

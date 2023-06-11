@@ -4,13 +4,16 @@ test = "hello world!";
 adsda = 123123;
 dasdasd = 12312.1232;
 
-function string foo(int a, int b) {
-    int i;
-    i = 0;
+function int max(int a, int b) {
+    if a > b {
+        return a;
+    } else {
+        return b;
+    };
 };
 
 int a;
-a = 1;
+a = max(a, b);
 int b;
 b = 2;
 int t;
@@ -31,3 +34,16 @@ if not(1 == 1) or 1 > 2 {
 
 b = 123 + 232 * 3 - (334 + 2 / -2);
 
+int i;
+i = 0;
+
+int n;
+n = 10;
+
+while i < n {
+    a = a + 3;
+    i = i + 1;
+    if 1 == 2 {
+        i = i - 1;
+    };
+};
