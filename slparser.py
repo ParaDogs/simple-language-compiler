@@ -30,7 +30,7 @@ class Node:
                 if isinstance(attrs[attr_name], Token):
                     res += f"{attr_name}: {attrs[attr_name]}\n"
                 else:
-                    res += attrs[attr_name].__repr__(level+1)
+                    res += f"{attr_name}: {attrs[attr_name].__repr__(level+1)}"
         return res
 
 class NodeProgram(Node):
@@ -152,7 +152,7 @@ class Parser:
 
     def require(self, expected_token_name):
         if self.token.name != expected_token_name:
-            self.error(f"Ожидается токен {expected_token_name}!")
+            self.error(f"Ожидается токен {Token.token_names[expected_token_name]}!")
 
     def error(self, msg):
         print(f'Ошибка синтаксического анализа ({self.lexer.lineno}, {self.lexer.pos}): {msg}')
@@ -160,7 +160,7 @@ class Parser:
 
     def block(self) -> Node:
         statements = []
-        while self.token.name != Token.RCBR:
+        while self.token.name not in {Token.RCBR, Token.EOF}:
             statements.append(self.statement())
             self.require(Token.SEMI)
             self.next_token()
@@ -168,7 +168,7 @@ class Parser:
 
     def else_block(self) -> Node:
         statements = []
-        while self.token.name != Token.RCBR:
+        while self.token.name not in {Token.RCBR, Token.EOF}:
             statements.append(self.statement())
             self.require(Token.SEMI)
             self.next_token()
@@ -176,7 +176,7 @@ class Parser:
 
     def actual_params(self) -> Node:
         params = []
-        while self.token.name != Token.RBR:
+        while self.token.name not in {Token.RBR, Token.EOF}:
             params.append(self.expression())
             if self.token.name == Token.COMMA:
                 self.next_token()
@@ -184,7 +184,7 @@ class Parser:
 
     def formal_params(self) -> Node:
         params = []
-        while self.token.name != Token.RBR:
+        while self.token.name not in {Token.RBR, Token.EOF}:
             params.append(self.declaration())
             if self.token.name == Token.COMMA:
                 self.next_token()
@@ -332,7 +332,7 @@ class Parser:
 
     def sequence(self) -> Node:
         members = []
-        while self.token.name != Token.RSBR:
+        while self.token.name not in {Token.RSBR, Token.EOF}:
             members.append(self.expression())
             if self.token.name == Token.COMMA:
                 self.next_token()

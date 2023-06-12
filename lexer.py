@@ -9,6 +9,39 @@ class Token:
     FOR, WHILE, RETURN, FUNCTION, IF, ELSE,\
     OR, AND, NOT = range(35)
 
+    token_names = {
+            EOF             : "EOF",
+            STRING_LITERAL  : "STRING-LITERAL",
+            ID              : "ID",
+            INT_LITERAL     : "INT-LITERAL",
+            FLOAT_LITERAL   : "FLOAT-LITERAL",
+            ASSIGN          : "ASSIGN '='",
+            L               : "L '<'",
+            G               : "G '>'",
+            EQ              : "EQ '=='",
+            PLUS            : "PLUS '+'",
+            MINUS           : "MINUS '-'",
+            ASTERISK        : "ASTERISK '*'",
+            SLASH           : "SLASH '/'",
+            DSLASH          : "DSLASH '//'",
+            PERCENT         : "PERCENT '%'",
+            LBR             : "LBR '('",
+            RBR             : "RBR ')'",
+            LCBR            : "LCBR '{'",
+            RCBR            : "RCBR '}'",
+            LSBR            : "LSBR '['",
+            RSBR            : "RSBR ']'",
+            LE              : "LE '<='",
+            GE              : "GE '>='",
+            SEMI            : "SEMI ';'",
+            COMMA           : "COMMA ','",
+            FOR             : "FOR", 
+            WHILE           : "WHILE",
+            RETURN          : "RETURN",
+            FUNCTION        : "FUNCTION",
+            IF              : "IF",
+    }
+
     KEYWORDS = {
         'for'       : FOR,
         'while'     : WHILE,
@@ -28,39 +61,7 @@ class Token:
         self.pos = pos 
     
     def __repr__(self):
-        token_names = {
-            Token.EOF             : "EOF",
-            Token.STRING_LITERAL  : "STRING-LITERAL",
-            Token.ID              : "ID",
-            Token.INT_LITERAL     : "INT-LITERAL",
-            Token.FLOAT_LITERAL   : "FLOAT-LITERAL",
-            Token.ASSIGN          : "ASSIGN",
-            Token.L               : "L",
-            Token.G               : "G",
-            Token.EQ              : "EQ",
-            Token.PLUS            : "PLUS",
-            Token.MINUS           : "MINUS",
-            Token.ASTERISK        : "ASTERISK",
-            Token.SLASH           : "SLASH",
-            Token.DSLASH          : "DSLASH",
-            Token.PERCENT         : "PERCENT",
-            Token.LBR             : "LBR",
-            Token.RBR             : "RBR",
-            Token.LCBR            : "LCBR",
-            Token.RCBR            : "RCBR",
-            Token.LSBR            : "LSBR",
-            Token.RSBR            : "RSBR",
-            Token.LE              : "LE",
-            Token.GE              : "GE",
-            Token.SEMI            : "SEMI",
-            Token.COMMA           : "COMMA",
-            Token.FOR             : "FOR", 
-            Token.WHILE           : "WHILE",
-            Token.RETURN          : "RETURN",
-            Token.FUNCTION        : "FUNCTION",
-            Token.IF              : "IF",
-        }
-        return f'({token_names[self.name]}, {self.value}, ({self.lineno}, {self.pos}))'
+        return f'({self.token_names[self.name]}, {self.value}, ({self.lineno}, {self.pos}))'
 
 class Lexer:
     def __init__(self, file):
