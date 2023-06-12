@@ -2,26 +2,40 @@ import sys
 from lexer import Lexer, Token
 
 class Node:
-    def __repr__(self, level=0):
-        pass
-
-    def get_class_name(self):
+    def __get_class_name(self):
         c = str(self.__class__)
         pos_1 = c.find('.')+1
         pos_2 = c.find("'", pos_1)
         return f"{c[pos_1:pos_2]}"
 
+    def __repr__(self, level=0):
+        attrs = self.__dict__ # словарь атрибут : значение
+        # если атрибут один и тип его значения - это список,
+        # то это узел некоторой последовательности (подпрограмма, либо список)
+        if len(attrs) == 1 and isinstance(list(attrs.values())[0], list):
+            is_sequence = True
+        else:
+            is_sequence = False
+        res = f"{self.__get_class_name()}\n"
+        if is_sequence:
+            elements = list(attrs.values())[0]
+            for el in elements:
+                res += '|   ' * level
+                res += "|+-"
+                res += el.__repr__(level+1)
+        else:
+            for attr_name in attrs:
+                res += '|   ' * level
+                res += "|+-"
+                if isinstance(attrs[attr_name], Token):
+                    res += f"{attr_name}: {attrs[attr_name]}\n"
+                else:
+                    res += attrs[attr_name].__repr__(level+1)
+        return res
+
 class NodeProgram(Node):
     def __init__(self, children):
         self.children = children
-
-    def __repr__(self, level=0):
-        res = "PROGRAM\n"
-        for child in self.children:
-            res += '|   ' * level
-            res += "|+-"
-            res += child.__repr__(level+1)
-        return res
 
 class NodeBlock(NodeProgram): pass
 
@@ -30,30 +44,10 @@ class NodeDeclaration(Node):
         self.type = _type
         self.id = id
 
-    def __repr__(self, level=0):
-        res = "DECLARATION\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"type: {self.type.__repr__(level+1)}"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"id: {self.id}\n"
-        return res
-
 class NodeAssigning(Node):
-    def __init__(self, var, expression):
-        self.var = var
-        self.expression = expression
-
-    def __repr__(self, level=0):
-        res = "ASSIGNING\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"left-side : {self.var.__repr__(level+1)}"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"right-side: {self.expression.__repr__(level+1)}"
-        return res
+    def __init__(self, left_side, right_side):
+        self.left_side = left_side
+        self.right_side = right_side
 
 class NodeFunction(Node):
     def __init__(self, ret_type, id, formal_params, block):
@@ -62,46 +56,14 @@ class NodeFunction(Node):
         self.formal_params = formal_params
         self.block = block
 
-    def __repr__(self, level=0):
-        res = "FUNCTION\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"ret_type: {self.ret_type.__repr__(level+1)}"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"id: {self.id}\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"foramal_params: {self.formal_params.__repr__(level+1)}"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"block: {self.block.__repr__(level+1)}"
-        return res
-
 class NodeSequence(Node):
     def __init__(self, members):
         self.members = members
     
-    def __repr__(self, level=0):
-        res = f"SEQUENCE\n"
-        for param in self.members:
-            res += '|   ' * level
-            res += "|+-"
-            res += param.__repr__(level+1)
-        return res
-
 class NodeParams(Node):
     def __init__(self, params):
         self.params = params
     
-    def __repr__(self, level=0):
-        res = f"{self.get_class_name()}\n"
-        for param in self.params:
-            res += '|   ' * level
-            res += "|+-"
-            res += param.__repr__(level+1)
-        return res
-
 class NodeFormalParams(NodeParams): pass
 class NodeActualParams(NodeParams): pass
 
@@ -111,52 +73,19 @@ class NodeIfConstruction(Node):
         self.block = block
         self.else_block = else_block
     
-    def __repr__(self, level=0):
-        res = "IF-CONSTRUCTION\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"condition: {self.condition.__repr__(level+1)}"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"block: {self.block.__repr__(level+1)}"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"else_block: {self.else_block.__repr__(level+1)}"
-        return res
-        
 class NodeWhileConstruction(Node):
     def __init__(self, condition, block):
         self.condition = condition
         self.block = block
 
-    def __repr__(self, level=0):
-        res = "WHILE-CONSTRUCTION\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"condition: {self.condition.__repr__(level+1)}"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"block: {self.block.__repr__(level+1)}"
-        return res
-
 class NodeReturnStatement(Node):
     def __init__(self, expression):
         self.expression = expression
     
-    def __repr__(self, level=0):
-        res = "RETURN-STATEMETS\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"expression: {self.expression.__repr__(level+1)}"
-        return res
-
 class NodeLiteral(Node):
     def __init__(self, value):
         self.value = value
     
-    def __repr__(self, level=0):
-        return f"{self.value}\n"
-
 class NodeStringLiteral(NodeLiteral): pass
 class NodeIntLiteral(NodeLiteral): pass
 class NodeFloatLiteral(NodeLiteral): pass
@@ -165,80 +94,29 @@ class NodeVar(Node):
     def __init__(self, id):
         self.id = id
     
-    def __repr__(self, level=0):
-        res = f"{self.get_class_name()}\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"id: {self.id}\n"
-        return res
-
 class NodeAtomType(Node):
     def __init__(self, id):
         self.id = id
-
-    def __repr__(self, level=0):
-        res = f"ATOM-TYPE\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"id: {self.id}\n"
-        return res
 
 class NodeComplexType(Node):
     def __init__(self, id, size):
         self.id = id
         self.size = size
 
-    def __repr__(self, level=0):
-        res = f"COMPLEX-TYPE\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"id: {self.id}\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"size: {self.size}\n"
-        return res
-
 class NodeFunctionCall(Node):
     def __init__(self, id, actual_params):
         self.id = id
         self.actual_params = actual_params
 
-    def __repr__(self, level=0):
-        res = f"FUNCTION-CALL\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"id: {self.id}\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"actual_params: {self.actual_params.__repr__(level+1)}"
-        return res
-        
 class NodeIndexAccess(Node):
     def __init__(self, var, index):
         self.var = var
         self.index = index
 
-    def __repr__(self, level=0):
-        res = f"INDEX-ACCESS\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"var: {self.var.__repr__(level+1)}"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"index: {self.index.__repr__(level+1)}"
-        return res
-        
 class NodeUnaryOperator(Node):
     def __init__(self, operand):
         self.operand = operand
     
-    def __repr__(self, level=0):
-        res = f"{self.get_class_name()}\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"operand : {self.operand.__repr__(level+1)}"
-        return res
-
 class NodeUnaryMinus(NodeUnaryOperator): pass
 class NodeNot(NodeUnaryOperator): pass
 
@@ -246,16 +124,6 @@ class NodeBinaryOperator(Node):
     def __init__(self, left, right):
         self.left = left
         self.right = right
-
-    def __repr__(self, level=0):
-        res = f"{self.get_class_name()}\n"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"left : {self.left.__repr__(level+1)}"
-        res += '|   ' * level
-        res += "|+-"
-        res += f"right: {self.right.__repr__(level+1)}"
-        return res
 
 class NodeL(NodeBinaryOperator): pass
 class NodeG(NodeBinaryOperator): pass
@@ -628,7 +496,6 @@ class Parser:
                 self.next_token()
                 expression = self.expression()
                 return NodeReturnStatement(expression)
-
 
     def parse(self) -> Node:
         '''
