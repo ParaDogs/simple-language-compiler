@@ -150,6 +150,10 @@ class Parser:
     def next_token(self):
         self.token = self.lexer.get_next_token()
 
+    def require(self, expected_token_name):
+        if self.token.name != expected_token_name:
+            self.error(f"Ожидается токен {expected_token_name}!")
+
     def error(self, msg):
         print(f'Ошибка синтаксического анализа ({self.lexer.lineno}, {self.lexer.pos}): {msg}')
         sys.exit(1)
@@ -158,20 +162,16 @@ class Parser:
         statements = []
         while self.token.name != Token.RCBR:
             statements.append(self.statement())
-            if self.token.name == Token.SEMI:
-                self.next_token()
-            else:
-                 self.error("Ожидалась ';'!")
+            self.require(Token.SEMI)
+            self.next_token()
         return NodeBlock(statements)
 
     def else_block(self) -> Node:
         statements = []
         while self.token.name != Token.RCBR:
             statements.append(self.statement())
-            if self.token.name == Token.SEMI:
-                self.next_token()
-            else:
-                 self.error("Ожидалась ';'!")
+            self.require(Token.SEMI)
+            self.next_token()
         return NodeElseBlock(statements)
 
     def actual_params(self) -> Node:
@@ -208,15 +208,13 @@ class Parser:
                     case Token.LBR:
                         self.next_token()
                         actual_params = self.actual_params()
-                        if self.token.name != Token.RBR:
-                            self.error("Ожидалась закрывающая скобка ')'!")
+                        self.require(Token.RBR)
                         self.next_token()
                         return NodeFunctionCall(first_token, actual_params)
                     case Token.LSBR:
                         self.next_token()
                         index = self.expression()
-                        if self.token.name != Token.RSBR:
-                            self.error("Ожидалась закрывающая скобка ']'!")
+                        self.require(Token.RSBR)
                         self.next_token()
                         return NodeIndexAccess(NodeVar(first_token), index)
                     case _:
@@ -224,8 +222,7 @@ class Parser:
             case Token.LBR:
                 self.next_token()
                 expression = self.expression()
-                if self.token.name != Token.RBR:
-                    self.error("Ожидалась закрывающая скобка ')'!")
+                self.require(Token.RBR)
                 self.next_token()
                 return expression
 
@@ -275,8 +272,7 @@ class Parser:
             case Token.LBR:
                 self.next_token()
                 condition = self.condition()
-                if self.token.name != Token.RBR:
-                    self.error("Ожидалась закрывающая скобка ')'!")
+                self.require(Token.RBR)
                 self.next_token()
                 return condition
             case _:
@@ -327,12 +323,10 @@ class Parser:
         if self.token.name != Token.LSBR:
             return NodeAtomType(id)
         self.next_token()
-        if self.token.name != Token.INT_LITERAL:
-            self.error("Ожидался целочисленый литерал при указании размера массива!")
+        self.require(Token.INT_LITERAL)
         size = self.token
         self.next_token()
-        if self.token.name != Token.RSBR:
-            self.error("Ожидалась ']' при указании размера массива!")
+        self.require(Token.RSBR)
         self.next_token()
         return NodeComplexType(id, size)
 
@@ -345,11 +339,9 @@ class Parser:
         return NodeSequence(members)
 
     def declaration(self) -> Node:
-        if self.token.name != Token.ID:
-            self.error("Ожидался идентификатор типа!")
+        self.require(Token.ID)
         _type = self.type()
-        if self.token.name != Token.ID:
-            self.error("Ожидался идентификатор!")
+        self.require(Token.ID)
         id = self.token
         self.next_token()
         return NodeDeclaration(_type, id)
@@ -369,15 +361,12 @@ class Parser:
                     # например int[10] abc
                     case Token.LSBR:
                         self.next_token()
-                        if self.token.name != Token.INT_LITERAL:
-                            self.error("Ожидался целочисленый литерал при указании размера массива!")
+                        self.require(Token.INT_LITERAL)
                         size = self.token
                         self.next_token()
-                        if self.token.name != Token.RSBR:
-                            self.error("Ожидалась ']' при указании размера массива!")
+                        self.require(Token.RSBR)
                         self.next_token()
-                        if self.token.name != Token.ID:
-                            self.error("Ожидался идентификатор переменной!")
+                        self.require(Token.ID)
                         name = self.token
                         self.next_token()
                         return NodeDeclaration(NodeComplexType(first_token, size), name)
@@ -388,16 +377,14 @@ class Parser:
                             return NodeAssigning(NodeVar(first_token), self.expression())
                         self.next_token()
                         sequence = self.sequence()
-                        if self.token.name != Token.RSBR:
-                            self.error("Ожидалась закрывающая скобка ']' при записи последовательности!")
+                        self.require(Token.RSBR)
                         self.next_token()
                         return NodeAssigning(NodeVar(first_token), sequence)
                     # например abc(1,3,4)
                     case Token.LBR:
                         self.next_token()
                         actual_params = self.actual_params()
-                        if self.token.name != Token.RBR:
-                            self.error("Ожидалась закрывающая скобка ')' при вызове функции!")
+                        self.require(Token.RBR)
                         self.next_token()
                         return NodeFunctionCall(first_token, actual_params)
                     case _:
@@ -408,74 +395,62 @@ class Parser:
                 # пропускаем токен FUNCTION
                 self.next_token()
                 # следующий токен содержит тип возвр. значения. это ID типа.
-                if self.token.name != Token.ID:
-                    self.error("Ожидался идентификатор функции!")
+                self.require(Token.ID)
                 # сохраним тип
                 first_token = self.type()
                 # следующий токен содержит ID функции
-                if self.token.name != Token.ID:
-                    self.error("Ожидалось указание типа возвращаемого значения функции!")
+                self.require(Token.ID)
                 # сохраним имя функции
                 name = self.token
                 # смотрим на следующий токен
                 self.next_token()
                 # следующий токен ( - скобка перед формальными параметрами
-                if self.token.name != Token.LBR:
-                    self.error("Ожидалась открывающая скобка '(' и параметры функции!")
+                self.require(Token.LBR)
                 # пропускаем скобку
                 self.next_token()
                 # начинаем разбор формальных параметров
                 formal_params = self.formal_params() 
                 # после разбора формальных параметров лексер должен смотреть на закрывающую скобку )
-                if self.token.name != Token.RBR:
-                    self.error("Ожидалась закрывающая скобка ')'!")
+                self.require(Token.RBR)
                 # пропускаем скобку
                 self.next_token()
                 #следующий токен { - скобка перед телом функции
-                if self.token.name != Token.LCBR:
-                    self.error("Ожидалась открывающая скобка '{' и тело функции!")
+                self.require(Token.LCBR)
                 # пропускаем скобку
                 self.next_token()
                 # начинаем разбирать тело
                 block = self.block()
                 # после разбора тела функции мы должны встретить закрывающую скобку }
-                if self.token.name != Token.RCBR:
-                    self.error("Ожидалась закрывающая фигурная скобка!")
+                self.require(Token.RCBR)
                 self.next_token()
                 return NodeFunction(first_token, name, formal_params, block)
 
             case Token.IF:
                 self.next_token()
                 condition = self.condition()
-                if self.token.name != Token.LCBR:
-                    self.error("Ожидалась открывающая скобка '{' для блока if!")
+                self.require(Token.LCBR)
                 self.next_token()
                 block = self.block()
-                if self.token.name != Token.RCBR:
-                    self.error("Ожидалась закрывающая скобка '}' для блока if!")
+                self.require(Token.RCBR)
                 self.next_token()
                 if self.token.name != Token.ELSE:
                     # возврат условной конструкции без блока else
-                    return NodeIfConstruction(condition, block, NodeBlock([]))
+                    return NodeIfConstruction(condition, block, NodeElseBlock([]))
                 self.next_token()
-                if self.token.name != Token.LCBR:
-                    self.error("Ожидалась открывающая скобка '{' для блока else!")
+                self.require(Token.LCBR)
                 self.next_token()
                 else_block = self.else_block()
-                if self.token.name != Token.RCBR:
-                    self.error("Ожидалась закрывающая скобка '}' для блока else!")
+                self.require(Token.RCBR)
                 self.next_token()
                 return NodeIfConstruction(condition, block, else_block)
 
             case Token.WHILE:
                 self.next_token()
                 condition = self.condition()
-                if self.token.name != Token.LCBR:
-                    self.error("Ожидалась открывающая скобка '{' для блока while!")
+                self.require(Token.LCBR)
                 self.next_token()
                 block = self.block()
-                if self.token.name != Token.RCBR:
-                    self.error("Ожидалась закрывающая скобка '}' для блока while!")
+                self.require(Token.RCBR)
                 self.next_token()
                 return NodeWhileConstruction(condition, block)
 
@@ -485,18 +460,13 @@ class Parser:
                 return NodeReturnStatement(expression)
 
     def parse(self) -> Node:
-        '''
-        program ::= statement SEMI EOF 
-                |   statement SEMI program
-        '''
         if self.token.name == Token.EOF:
             self.error("Пустой файл!")
         else:
             statements = []
             while self.token.name != Token.EOF:
                 statements.append(self.statement())
-                if self.token.name != Token.SEMI:
-                    self.error("Ожидалась ';'!")
+                self.require(Token.SEMI)
                 self.next_token()
             return NodeProgram(statements)
                 
