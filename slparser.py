@@ -38,6 +38,7 @@ class NodeProgram(Node):
         self.children = children
 
 class NodeBlock(NodeProgram): pass
+class NodeElseBlock(NodeBlock): pass
 
 class NodeDeclaration(Node):
     def __init__(self, _type, id):
@@ -141,7 +142,6 @@ class NodeMultiply(NodeBinaryOperator): pass
 class NodeIDivision(NodeBinaryOperator): pass
 class NodeMod(NodeBinaryOperator): pass
 
-
 class Parser:
     def __init__(self, lexer: Lexer):
         self.lexer = lexer
@@ -164,6 +164,16 @@ class Parser:
                  self.error("Ожидалась ';'!")
         return NodeBlock(statements)
 
+    def else_block(self) -> Node:
+        statements = []
+        while self.token.name != Token.RCBR:
+            statements.append(self.statement())
+            if self.token.name == Token.SEMI:
+                self.next_token()
+            else:
+                 self.error("Ожидалась ';'!")
+        return NodeElseBlock(statements)
+
     def actual_params(self) -> Node:
         params = []
         while self.token.name != Token.RBR:
@@ -182,54 +192,50 @@ class Parser:
 
     def operand(self) -> Node:
         first_token = self.token
-        if self.token.name == Token.STRING_LITERAL:
-            self.next_token()
-            return NodeStringLiteral(first_token)
-        elif self.token.name == Token.INT_LITERAL:
-            self.next_token()
-            return NodeIntLiteral(first_token)
-        elif self.token.name == Token.FLOAT_LITERAL:
-            self.next_token()
-            return NodeFloatLiteral(first_token)
-        elif self.token.name == Token.ID:
-            self.next_token()
-            if self.token.name == Token.LBR:
+        match self.token.name:
+            case Token.STRING_LITERAL:
                 self.next_token()
-                if self.token.name == Token.RBR:
-                    self.next_token()
-                    return NodeFunctionCall(first_token, [])
-                else:
-                    actual_params = self.actual_params()
-                    if self.token.name == Token.RBR:
+                return NodeStringLiteral(first_token)
+            case Token.INT_LITERAL:
+                self.next_token()
+                return NodeIntLiteral(first_token)
+            case Token.FLOAT_LITERAL:
+                self.next_token()
+                return NodeFloatLiteral(first_token)
+            case Token.ID:
+                self.next_token()
+                match self.token.name:
+                    case Token.LBR:
+                        self.next_token()
+                        actual_params = self.actual_params()
+                        if self.token.name != Token.RBR:
+                            self.error("Ожидалась закрывающая скобка ')'!")
                         self.next_token()
                         return NodeFunctionCall(first_token, actual_params)
-                    else:
-                        self.error("Ожидалась закрывающая скобка ')'!")
-            elif self.token.name == Token.LSBR:
+                    case Token.LSBR:
+                        self.next_token()
+                        index = self.expression()
+                        if self.token.name != Token.RSBR:
+                            self.error("Ожидалась закрывающая скобка ']'!")
+                        self.next_token()
+                        return NodeIndexAccess(NodeVar(first_token), index)
+                    case _:
+                        return NodeVar(first_token)
+            case Token.LBR:
                 self.next_token()
-                index = self.expression()
-                if self.token.name == Token.RSBR:
-                    self.next_token()
-                    return NodeIndexAccess(NodeVar(first_token), index)
-                else:
-                    self.error("Ожидалась закрывающая скобка ']'!")
-            else:
-                return NodeVar(first_token)
-        elif self.token.name == Token.LBR:
-            self.next_token()
-            expression = self.expression()
-            if self.token.name == Token.RBR:
+                expression = self.expression()
+                if self.token.name != Token.RBR:
+                    self.error("Ожидалась закрывающая скобка ')'!")
                 self.next_token()
                 return expression
-            else:
-                self.error("Ожидалась закрывающая скобка ')'!")
 
     def factor(self) -> Node:
-        if self.token.name == Token.MINUS:
-            self.next_token()
-            return NodeUnaryMinus(self.operand())
-        else:
-            return self.operand()
+        match self.token.name:
+            case Token.MINUS:
+                self.next_token()
+                return NodeUnaryMinus(self.operand())
+            case _:
+                return self.operand()
 
     def term(self) -> Node:
         left = self.factor()
@@ -262,19 +268,19 @@ class Parser:
         return left
 
     def logical_operand(self) -> Node:
-        if self.token.name == Token.NOT:
-            self.next_token()
-            return NodeNot(self.logical_operand())
-        elif self.token.name == Token.LBR:
-            self.next_token()
-            condition = self.condition()
-            if self.token.name == Token.RBR:
+        match self.token.name:
+            case Token.NOT:
+                self.next_token()
+                return NodeNot(self.logical_operand())
+            case Token.LBR:
+                self.next_token()
+                condition = self.condition()
+                if self.token.name != Token.RBR:
+                    self.error("Ожидалась закрывающая скобка ')'!")
                 self.next_token()
                 return condition
-            else:
-                self.error("Ожидалась закрывающая скобка ')'!")
-        else:
-            return self.expression()
+            case _:
+                return self.expression()
 
     def and_operand(self) -> Node:
         left = self.logical_operand()
@@ -318,20 +324,17 @@ class Parser:
     def type(self) -> Node:
         id = self.token
         self.next_token()
-        if self.token.name == Token.LSBR:
-            self.next_token()
-            if self.token.name == Token.INT_LITERAL:
-                size = self.token
-                self.next_token()
-                if self.token.name == Token.RSBR:
-                    self.next_token()
-                    return NodeComplexType(id, size)
-                else:
-                    self.error("Ожидалась ']' при указании размера массива!")
-            else:
-                self.error("Ожидался целочисленый литерал при указании размера массива!")
-        else:
+        if self.token.name != Token.LSBR:
             return NodeAtomType(id)
+        self.next_token()
+        if self.token.name != Token.INT_LITERAL:
+            self.error("Ожидался целочисленый литерал при указании размера массива!")
+        size = self.token
+        self.next_token()
+        if self.token.name != Token.RSBR:
+            self.error("Ожидалась ']' при указании размера массива!")
+        self.next_token()
+        return NodeComplexType(id, size)
 
     def sequence(self) -> Node:
         members = []
@@ -342,16 +345,14 @@ class Parser:
         return NodeSequence(members)
 
     def declaration(self) -> Node:
-        if self.token.name == Token.ID:
-            _type = self.type()
-            if self.token.name == Token.ID:
-                id = self.token
-                self.next_token()
-                return NodeDeclaration(_type, id)
-            else:
-                self.error("Ожидался идентификатор!")
-        else:
+        if self.token.name != Token.ID:
             self.error("Ожидался идентификатор типа!")
+        _type = self.type()
+        if self.token.name != Token.ID:
+            self.error("Ожидался идентификатор!")
+        id = self.token
+        self.next_token()
+        return NodeDeclaration(_type, id)
 
     def statement(self) -> Node:
         match self.token.name:
@@ -359,138 +360,124 @@ class Parser:
             case Token.ID:
                 first_token = self.token
                 self.next_token()
-                # например int abc 
-                if self.token.name == Token.ID:
-                    name = self.token
-                    self.next_token()
-                    return NodeDeclaration(NodeAtomType(first_token), name)
-                # например int[10] abc
-                elif self.token.name == Token.LSBR:
-                    self.next_token()
-                    if self.token.name == Token.INT_LITERAL:
+                match self.token.name:
+                    # например int abc 
+                    case Token.ID:
+                        name = self.token
+                        self.next_token()
+                        return NodeDeclaration(NodeAtomType(first_token), name)
+                    # например int[10] abc
+                    case Token.LSBR:
+                        self.next_token()
+                        if self.token.name != Token.INT_LITERAL:
+                            self.error("Ожидался целочисленый литерал при указании размера массива!")
                         size = self.token
                         self.next_token()
-                        if self.token.name == Token.RSBR:
-                            self.next_token()
-                            if self.token.name == Token.ID:
-                                name = self.token
-                                self.next_token()
-                                return NodeDeclaration(NodeComplexType(first_token, size), name)
-                            else:
-                                self.error("Ожидался идентификатор переменной!")
-                        else:
+                        if self.token.name != Token.RSBR:
                             self.error("Ожидалась ']' при указании размера массива!")
-                    else:
-                        self.error("Ожидался целочисленый литерал при указании размера массива!")
-                # например abc = 123 или abc = [1,2,3]
-                elif self.token.name == Token.ASSIGN:
-                    self.next_token()
-                    if self.token.name == Token.LSBR:
+                        self.next_token()
+                        if self.token.name != Token.ID:
+                            self.error("Ожидался идентификатор переменной!")
+                        name = self.token
+                        self.next_token()
+                        return NodeDeclaration(NodeComplexType(first_token, size), name)
+                    # например abc = 123 или abc = [1,2,3]
+                    case Token.ASSIGN:
+                        self.next_token()
+                        if self.token.name != Token.LSBR:
+                            return NodeAssigning(NodeVar(first_token), self.expression())
                         self.next_token()
                         sequence = self.sequence()
-                        if self.token.name == Token.RSBR:
-                            self.next_token()
-                            return NodeAssigning(NodeVar(first_token), sequence)
-                        else:
+                        if self.token.name != Token.RSBR:
                             self.error("Ожидалась закрывающая скобка ']' при записи последовательности!")
-                    else:
-                        return NodeAssigning(NodeVar(first_token), self.expression())
-                # например abc(1,3,4)
-                elif self.token.name == Token.LBR:
-                    self.next_token()
-                    actual_params = self.actual_params()
-                    if self.token.name == Token.RBR:
+                        self.next_token()
+                        return NodeAssigning(NodeVar(first_token), sequence)
+                    # например abc(1,3,4)
+                    case Token.LBR:
+                        self.next_token()
+                        actual_params = self.actual_params()
+                        if self.token.name != Token.RBR:
+                            self.error("Ожидалась закрывающая скобка ')' при вызове функции!")
                         self.next_token()
                         return NodeFunctionCall(first_token, actual_params)
-                else:
-                    self.error("Ожидалось объявление переменной, присваивание или вызов функции!")
+                    case _:
+                        self.error("Ожидалось объявление переменной, присваивание или вызов функции!")
 
             # function
             case Token.FUNCTION:
                 # пропускаем токен FUNCTION
                 self.next_token()
                 # следующий токен содержит тип возвр. значения. это ID типа.
-                if self.token.name == Token.ID:
-                    # сохраним тип
-                    first_token = self.type()
-                    # следующий токен содержит ID функции
-                    if self.token.name == Token.ID:
-                        # сохраним имя функции
-                        name = self.token
-                        # смотрим на следующий токен
-                        self.next_token()
-                        # следующий токен ( - скобка перед формальными параметрами
-                        if self.token.name == Token.LBR:
-                            # пропускаем скобку
-                            self.next_token()
-                            # начинаем разбор формальных параметров
-                            formal_params = self.formal_params() 
-                            # после разбора формальных параметров лексер должен смотреть на закрывающую скобку )
-                            if self.token.name == Token.RBR:
-                                # пропускаем скобку
-                                self.next_token()
-                                #следующий токен { - скобка перед телом функции
-                                if self.token.name == Token.LCBR:
-                                    # пропускаем скобку
-                                    self.next_token()
-                                    # начинаем разбирать тело
-                                    block = self.block()
-                                    # после разбора тела функции мы должны встретить закрывающую скобку }
-                                    if self.token.name == Token.RCBR:
-                                        self.next_token()
-                                        return NodeFunction(first_token, name, formal_params, block)
-                                    else:
-                                        self.error("Ожидалась закрывающая фигурная скобка!")
-                                else:
-                                    self.error("Ожидалась открывающая скобка '{' и тело функции!")
-                            else:
-                                self.error("Ожидалась закрывающая скобка ')'!")
-                        else:
-                            self.error("Ожидалась открывающая скобка '(' и параметры функции!")
-                    else:
-                        self.error("Ожидалось указание типа возвращаемого значения функции!")
+                if self.token.name != Token.ID:
+                    self.error("Ожидался идентификатор функции!")
+                # сохраним тип
+                first_token = self.type()
+                # следующий токен содержит ID функции
+                if self.token.name != Token.ID:
+                    self.error("Ожидалось указание типа возвращаемого значения функции!")
+                # сохраним имя функции
+                name = self.token
+                # смотрим на следующий токен
+                self.next_token()
+                # следующий токен ( - скобка перед формальными параметрами
+                if self.token.name != Token.LBR:
+                    self.error("Ожидалась открывающая скобка '(' и параметры функции!")
+                # пропускаем скобку
+                self.next_token()
+                # начинаем разбор формальных параметров
+                formal_params = self.formal_params() 
+                # после разбора формальных параметров лексер должен смотреть на закрывающую скобку )
+                if self.token.name != Token.RBR:
+                    self.error("Ожидалась закрывающая скобка ')'!")
+                # пропускаем скобку
+                self.next_token()
+                #следующий токен { - скобка перед телом функции
+                if self.token.name != Token.LCBR:
+                    self.error("Ожидалась открывающая скобка '{' и тело функции!")
+                # пропускаем скобку
+                self.next_token()
+                # начинаем разбирать тело
+                block = self.block()
+                # после разбора тела функции мы должны встретить закрывающую скобку }
+                if self.token.name != Token.RCBR:
+                    self.error("Ожидалась закрывающая фигурная скобка!")
+                self.next_token()
+                return NodeFunction(first_token, name, formal_params, block)
 
             case Token.IF:
                 self.next_token()
                 condition = self.condition()
-                if self.token.name == Token.LCBR:
-                    self.next_token()
-                    block = self.block()
-                    if self.token.name == Token.RCBR:
-                        self.next_token()
-                        if self.token.name == Token.ELSE:
-                            self.next_token()
-                            if self.token.name == Token.LCBR:
-                                self.next_token()
-                                else_block = self.block()
-                                if self.token.name == Token.RCBR:
-                                    self.next_token()
-                                    return NodeIfConstruction(condition, block, else_block)
-                                else:
-                                    self.error("Ожидалась закрывающая скобка '}' для блока else!")
-                            else:
-                                self.error("Ожидалась открывающая скобка '{' для блока else!")
-                        else:
-                            # возврат условной конструкции без блока else
-                            return NodeIfConstruction(condition, block, NodeBlock([]))
-                    else:
-                        self.error("Ожидалась закрывающая скобка '}' для блока if!")
-                else:
+                if self.token.name != Token.LCBR:
                     self.error("Ожидалась открывающая скобка '{' для блока if!")
+                self.next_token()
+                block = self.block()
+                if self.token.name != Token.RCBR:
+                    self.error("Ожидалась закрывающая скобка '}' для блока if!")
+                self.next_token()
+                if self.token.name != Token.ELSE:
+                    # возврат условной конструкции без блока else
+                    return NodeIfConstruction(condition, block, NodeBlock([]))
+                self.next_token()
+                if self.token.name != Token.LCBR:
+                    self.error("Ожидалась открывающая скобка '{' для блока else!")
+                self.next_token()
+                else_block = self.else_block()
+                if self.token.name != Token.RCBR:
+                    self.error("Ожидалась закрывающая скобка '}' для блока else!")
+                self.next_token()
+                return NodeIfConstruction(condition, block, else_block)
 
             case Token.WHILE:
                 self.next_token()
                 condition = self.condition()
-                if self.token.name == Token.LCBR:
-                    self.next_token()
-                    block = self.block()
-                    if self.token.name == Token.RCBR:
-                        self.next_token()
-                        return NodeWhileConstruction(condition, block)
-                    else:
-                        self.error("Ожидалась закрывающая скобка '}' для блока while!")
-                else:
+                if self.token.name != Token.LCBR:
                     self.error("Ожидалась открывающая скобка '{' для блока while!")
+                self.next_token()
+                block = self.block()
+                if self.token.name != Token.RCBR:
+                    self.error("Ожидалась закрывающая скобка '}' для блока while!")
+                self.next_token()
+                return NodeWhileConstruction(condition, block)
 
             case Token.RETURN:
                 self.next_token()
@@ -508,9 +495,8 @@ class Parser:
             statements = []
             while self.token.name != Token.EOF:
                 statements.append(self.statement())
-                if self.token.name == Token.SEMI:
-                    self.next_token()
-                else:
+                if self.token.name != Token.SEMI:
                     self.error("Ожидалась ';'!")
+                self.next_token()
             return NodeProgram(statements)
                 

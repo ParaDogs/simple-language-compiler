@@ -33,7 +33,7 @@ class Token:
             Token.STRING_LITERAL  : "STRING-LITERAL",
             Token.ID              : "ID",
             Token.INT_LITERAL     : "INT-LITERAL",
-            Token.FLOAT_LITERAL    : "FLOAT-LITERAL",
+            Token.FLOAT_LITERAL   : "FLOAT-LITERAL",
             Token.ASSIGN          : "ASSIGN",
             Token.L               : "L",
             Token.G               : "G",
@@ -198,13 +198,16 @@ class Lexer:
                 self.__get_next_char()
                 string_literal = ""
                 while self.char != '"':
-                    if self.char == '':
+                    if self.char == '': # если достигнут конец файла
                         self.error('Ожидалась закрывающая кавычка!')
                     string_literal += self.char
                     self.__get_next_char()
                 self.__get_next_char()
                 self.state = None
-                return Token(Token.STRING_LITERAL, string_literal, self.lineno, self.pos-2) # минус 2 потому что токен оканчивается за 2 символа до текущего положения чтения (оно сейчас указывает на символ после кавычки, а не на последний символ строки)
+                # self.pos минус 2 потому что токен оканчивается за 2 символа
+                # до текущего положения чтения (оно сейчас указывает на символ
+                # после кавычки, а не на последний символ строки)
+                return Token(Token.STRING_LITERAL, string_literal, self.lineno, self.pos-2)
             case Token.INT_LITERAL:
                 int_literal = ""
                 while self.char.isdigit():
